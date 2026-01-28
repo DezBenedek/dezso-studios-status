@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "statuspulse-pro",
+  "main": "index.js",
+  "compatibility_date": "2024-01-01",
+  "observability": {
+    "enabled": true
+  },
+  "kv_namespaces": [
+    {
+      "binding": "STATUS_KV",
+      "id": "f185a8af3f4e495083b894441cfd4c09" 
+    }
+  ],
+  "triggers": {
+    "crons": [
+      "*/3 * * * *"
+    ]
+  }
+}
