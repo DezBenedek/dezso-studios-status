@@ -6,6 +6,9 @@
   "observability": {
     "enabled": true
   },
+  "vars": {
+    "ADMIN_PASSWORD_HASH": "55c537773399a58d1f76d9e2f2ce42a51d296df9a1eed8aafcb6176377a585a6"
+  },
   "kv_namespaces": [
     {
       "binding": "STATUS_KV",
