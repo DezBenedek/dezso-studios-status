@@ -7,162 +7,119 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        :root { --bg: #0a0c10; --card: #161b22; --border: #30363d; --success: #238636; --danger: #da3633; }
+        :root { --bg: #0a0c10; --card: #161b22; --border: #30363d; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: #c9d1d9; }
-        .monitor-card { background: var(--card); border: 1px solid var(--border); transition: transform 0.2s; }
-        .monitor-card:hover { border-color: #8b949e; }
-        .status-bar { display: flex; gap: 4px; height: 40px; }
-        .bar-segment { flex: 1; border-radius: 4px; transition: all 0.2s; position: relative; }
-        .bar-segment:hover { filter: brightness(1.5); cursor: pointer; transform: translateY(-2px); }
-        
-        /* Tooltip */
-        .bar-segment[title]:hover::after {
-            content: attr(title);
-            position: absolute; bottom: 125%; left: 50%; transform: translateX(-50%);
-            background: #1f2937; color: white; padding: 8px 12px; border-radius: 8px;
-            font-size: 12px; white-space: nowrap; z-index: 100; border: 1px solid #374151;
-            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
-        }
+        .monitor-card { background: var(--card); border: 1px solid var(--border); }
+        .status-bar { display: flex; gap: 4px; height: 35px; }
+        .bar-segment { flex: 1; border-radius: 3px; position: relative; }
         .active-link { background: #1f2937; border-left: 4px solid #2f81f7; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col md:flex-row">
     <aside class="w-full md:w-72 border-r border-[#30363d] bg-[#0d1117] flex flex-col">
-        <div class="p-6 border-b border-[#30363d] flex items-center gap-3">
-            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white">S</div>
-            <span class="font-bold text-white tracking-tight">StatusPulse</span>
+        <div class="p-6 border-b border-[#30363d] flex items-center justify-between">
+            <span class="font-bold text-white uppercase tracking-tighter">StatusPulse</span>
+            <button onclick="showAdmin()" class="text-[#8b949e] hover:text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
         </div>
         <div id="monitor-list" class="flex-1 overflow-y-auto p-3 space-y-1"></div>
     </aside>
 
-    <main class="flex-1 p-6 md:p-12 overflow-y-auto">
-        <div id="detail-view" class="max-w-5xl mx-auto">
-            <div class="flex items-center justify-center h-64 text-slate-500">Válassz egy monitort...</div>
+    <main class="flex-1 p-6 md:p-12 overflow-y-auto relative">
+        <div id="admin-panel" class="hidden absolute top-6 right-6 z-50 bg-[#161b22] border border-[#30363d] p-4 rounded-xl shadow-2xl w-64">
+            <h4 class="text-sm font-bold mb-3">Admin Műveletek</h4>
+            <input type="password" id="admin-pw" placeholder="Jelszó" class="w-full bg-[#0d1117] border border-[#30363d] p-2 rounded text-sm mb-2 outline-none">
+            <button id="btn-run" onclick="manualCheck()" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 rounded transition-colors">Ellenőrzés Indítása</button>
+            <button onclick="showAdmin()" class="w-full text-[#8b949e] text-[10px] mt-2">Bezárás</button>
         </div>
+
+        <div id="detail-view" class="max-w-5xl mx-auto italic text-slate-500">Adatok szinkronizálása...</div>
     </main>
 
     <script>
         let rawData = {};
         let activeId = null;
 
+        function showAdmin() { document.getElementById('admin-panel').classList.toggle('hidden'); }
+
+        async function manualCheck() {
+            const password = document.getElementById('admin-pw').value;
+            const btn = document.getElementById('btn-run');
+            btn.innerText = "Futás...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/run-check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                if (res.ok) {
+                    alert("Sikeres manuális frissítés!");
+                    refresh();
+                } else {
+                    alert("Hiba: " + await res.text());
+                }
+            } catch (e) { alert("Hiba történt!"); }
+            btn.innerText = "Ellenőrzés Indítása";
+            btn.disabled = false;
+        }
+
         async function refresh() {
             try {
                 const res = await fetch('?api=true');
                 rawData = await res.json();
-                if (!activeId && Object.keys(rawData).length > 0) activeId = Object.keys(rawData)[0];
+                if (!activeId) activeId = Object.keys(rawData)[0];
                 render();
-            } catch (e) { console.error("API error", e); }
+            } catch (e) { console.error(e); }
         }
 
-        // Javított Uptime számolás: Ha bármilyen adat van, abból számol
-        function calculateUptime(monitor) {
-            const logs = monitor.detailedLogs || [];
-            if (logs.length === 0) return "100.0";
-            const upCount = logs.filter(l => l.ok === true || l.ok === "true").length;
-            return ((upCount / logs.length) * 100).toFixed(2);
+        function calculateUptime(m) {
+            const logs = m.detailedLogs || [];
+            if (!logs.length) return "100.0";
+            return ((logs.filter(l => l.ok).length / logs.length) * 100).toFixed(2);
         }
 
         function render() {
             const list = document.getElementById('monitor-list');
-            list.innerHTML = '';
-            
-            Object.keys(rawData).forEach(id => {
-                const m = rawData[id];
-                const isUp = m.lastStatus?.ok;
-                const div = document.createElement('div');
-                div.className = `p-3 rounded-lg cursor-pointer flex items-center gap-3 transition-colors ${activeId === id ? 'active-link text-white' : 'hover:bg-[#161b22] text-[#8b949e]'}`;
-                div.onclick = () => { activeId = id; render(); };
-                div.innerHTML = `
-                    <div class="w-2 h-2 rounded-full ${isUp ? 'bg-[#238636]' : 'bg-[#da3633]'}"></div>
-                    <span class="text-sm font-medium">${m.name}</span>
-                `;
-                list.appendChild(div);
-            });
+            list.innerHTML = Object.keys(rawData).map(id => `
+                <div onclick="activeId='${id}';render()" class="p-3 rounded-lg cursor-pointer flex items-center gap-3 transition-colors ${activeId===id ? 'active-link text-white' : 'text-[#8b949e]'}">
+                    <div class="w-2 h-2 rounded-full ${rawData[id].lastStatus?.ok ? 'bg-green-500' : 'bg-red-500'}"></div>
+                    <span class="text-sm font-medium">${rawData[id].name}</span>
+                </div>
+            `).join('');
 
             const m = rawData[activeId];
             if (!m) return;
-
-            const logs = m.detailedLogs || [];
+            
             const uptime = calculateUptime(m);
-            
-            // 30 darabos Status Bar generálás
-            const totalBars = 30;
-            const displayLogs = logs.slice(-totalBars);
-            let barHtml = '';
-            
-            for (let i = 0; i < totalBars; i++) {
-                const logIdx = i - (totalBars - displayLogs.length);
-                if (logIdx >= 0) {
-                    const log = displayLogs[logIdx];
-                    const time = new Date(log.time).toLocaleTimeString('hu-HU');
-                    const color = log.ok ? 'bg-[#238636]' : 'bg-[#da3633]';
-                    barHtml += `<div class="bar-segment ${color}" title="${time} | ${log.responseTime}ms | Status: ${log.status}"></div>`;
-                } else {
-                    barHtml += `<div class="bar-segment bg-[#21262d]"></div>`;
-                }
-            }
+            const displayLogs = m.detailedLogs.slice(-30);
+            let barHtml = Array.from({length: 30}, (_, i) => {
+                const log = displayLogs[i - (30 - displayLogs.length)];
+                return log ? `<div class="bar-segment ${log.ok ? 'bg-[#238636]' : 'bg-[#da3633]'} h-full" title="${new Date(log.time).toLocaleTimeString()} | ${log.responseTime}ms"></div>` 
+                           : `<div class="bar-segment bg-[#21262d] h-1/2"></div>`;
+            }).join('');
 
             document.getElementById('detail-view').innerHTML = `
-                <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div>
-                        <h1 class="text-3xl font-bold text-white mb-1">${m.name}</h1>
-                        <a href="${m.url}" target="_blank" class="text-blue-400 hover:underline text-sm">${m.url}</a>
-                    </div>
-                    <div class="px-4 py-2 rounded-full font-bold flex items-center gap-2 ${m.lastStatus?.ok ? 'bg-[#238636]/10 text-[#3fb950]' : 'bg-[#da3633]/10 text-[#f85149]'}">
-                        <div class="w-2 h-2 rounded-full animate-pulse ${m.lastStatus?.ok ? 'bg-[#3fb950]' : 'bg-[#f85149]'}"></div>
-                        ${m.lastStatus?.ok ? 'ÜZEMEL' : 'LEÁLLT'}
-                    </div>
+                <div class="flex justify-between items-center mb-8">
+                    <h1 class="text-3xl font-bold text-white">${m.name} <span class="text-sm font-normal text-blue-400 block">${m.url}</span></h1>
+                    <div class="px-4 py-2 rounded-full bg-white/5 font-bold ${m.lastStatus?.ok ? 'text-green-500' : 'text-red-500'} uppercase">${m.lastStatus?.ok ? 'Online' : 'Hiba'}</div>
                 </div>
-
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div class="monitor-card p-5 rounded-xl">
-                        <div class="text-xs text-[#8b949e] uppercase font-bold mb-1">Uptime (30 nap)</div>
-                        <div class="text-2xl font-semibold text-white">${uptime}%</div>
-                    </div>
-                    <div class="monitor-card p-5 rounded-xl">
-                        <div class="text-xs text-[#8b949e] uppercase font-bold mb-1">Válaszidő</div>
-                        <div class="text-2xl font-semibold text-white">${m.lastStatus?.responseTime || 0} ms</div>
-                    </div>
-                    <div class="monitor-card p-5 rounded-xl">
-                        <div class="text-xs text-[#8b949e] uppercase font-bold mb-1">Utolsó mérés</div>
-                        <div class="text-2xl font-semibold text-white">${m.lastStatus ? new Date(m.lastStatus.time).toLocaleTimeString('hu-HU') : '-'}</div>
-                    </div>
+                    <div class="monitor-card p-5 rounded-xl"><div class="text-xs text-slate-500 mb-1">Uptime</div><div class="text-2xl font-bold">${uptime}%</div></div>
+                    <div class="monitor-card p-5 rounded-xl"><div class="text-xs text-slate-500 mb-1">Válaszidő</div><div class="text-2xl font-bold">${m.lastStatus?.responseTime}ms</div></div>
+                    <div class="monitor-card p-5 rounded-xl"><div class="text-xs text-slate-500 mb-1">Státusz</div><div class="text-2xl font-bold">${m.lastStatus?.status}</div></div>
                 </div>
-
-                <div class="monitor-card p-6 rounded-xl mb-6">
-                    <div class="flex justify-between mb-4">
-                        <h3 class="text-sm font-semibold text-white">Mérések (utolsó 30)</h3>
-                        <span class="text-xs text-[#8b949e]">Balról jobbra: régitől az újszerűig</span>
-                    </div>
+                <div class="monitor-card p-6 rounded-xl">
+                    <div class="flex justify-between mb-4 text-xs font-bold text-slate-500 uppercase italic"><span>Utolsó 30 mérés</span><span>${uptime}%</span></div>
                     <div class="status-bar">${barHtml}</div>
-                </div>
-
-                <div class="space-y-3">
-                    <h3 class="text-sm font-semibold text-white ml-1">Események</h3>
-                    ${m.incidents && m.incidents.length > 0 ? 
-                        m.incidents.slice(-5).reverse().map(inc => `
-                            <div class="monitor-card p-4 rounded-lg flex justify-between items-center">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded bg-red-500/10 flex items-center justify-center text-red-500">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-                                    </div>
-                                    <div>
-                                        <div class="text-sm font-bold text-white">Down (Status: ${inc.code})</div>
-                                        <div class="text-xs text-[#8b949e]">${new Date(inc.start).toLocaleString('hu-HU')}</div>
-                                    </div>
-                                </div>
-                                <div class="text-xs font-medium ${inc.end ? 'text-green-500' : 'text-red-500'}">
-                                    ${inc.end ? `Tartam: ${Math.round((inc.end - inc.start)/60000)} perc` : 'Jelenleg is tart'}
-                                </div>
-                            </div>
-                        `).join('') : '<div class="text-center p-8 text-slate-600 border border-dashed border-[#30363d] rounded-xl">Nincs rögzített hiba.</div>'
-                    }
                 </div>
             `;
         }
 
         refresh();
-        setInterval(refresh, 20000);
+        setInterval(refresh, 30000);
     </script>
 </body>
 </html>
