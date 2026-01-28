@@ -1,17 +1,5 @@
 import htmlContent from './index.html';
 
-const URLS_TO_CHECK = [
-  { id: "google", name: "Google", url: "https://www.google.com" },
-  { id: "github", name: "GitHub", url: "https://github.com" },
-  { id: "facebook", name: "Facebook", url: "https://facebook.com" },
-  { id: "hibas-oldal", name: "Teszt Hiba", url: "https://ez-biztosan-nem-letezik.hu" },
-  { id: "dezso.hu", name: "dezso.hu", url: "https://www.dezso.hu" },
-  { id: "dezsocloud", name: "DezsoCloud", url: "https://cloud.dezso.hu" }
-];
-
-const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
-
-// Segédfüggvény a jelszó ellenőrzéséhez (SHA-256)
 async function verifyPassword(password, storedHash) {
   const encoder = new TextEncoder();
   const data = encoder.encode(password);
@@ -23,9 +11,10 @@ async function verifyPassword(password, storedHash) {
 
 async function performCheck(env) {
   let data = await env.STATUS_KV.get("uptime_data", { type: "json" }) || {};
+  let sites = await env.STATUS_KV.get("monitored_sites", { type: "json" }) || [];
   const now = Date.now();
 
-  for (const target of URLS_TO_CHECK) {
+  for (const target of sites) {
     if (!data[target.id]) {
       data[target.id] = { name: target.name, url: target.url, detailedLogs: [], incidents: [], lastStatus: null };
     }
@@ -57,7 +46,7 @@ async function performCheck(env) {
 
     monitor.lastStatus = result;
     monitor.detailedLogs.push(result);
-    monitor.detailedLogs = monitor.detailedLogs.filter(l => l.time > now - SEVEN_DAYS);
+    monitor.detailedLogs = monitor.detailedLogs.filter(l => l.time > now - (7 * 24 * 60 * 60 * 1000));
     if (monitor.incidents.length > 50) monitor.incidents.shift();
   }
 
@@ -73,21 +62,28 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // API Adatlekérés
     if (url.searchParams.get("api") === "true") {
       const data = await env.STATUS_KV.get("uptime_data");
-      return new Response(data || "{}", { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+      const sites = await env.STATUS_KV.get("monitored_sites");
+      return new Response(JSON.stringify({ data: JSON.parse(data || "{}"), sites: JSON.parse(sites || "[]") }), { 
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } 
+      });
     }
 
-    // MANUÁLIS CHECK INDÍTÁSA (POST kéréssel és jelszóval)
-    if (url.pathname === "/run-check" && request.method === "POST") {
-      const { password } = await request.json();
-      const isValid = await verifyPassword(password, env.ADMIN_PASSWORD_HASH);
-      
-      if (!isValid) return new Response("Helytelen jelszó!", { status: 401 });
-      
-      const newData = await performCheck(env);
-      return new Response(JSON.stringify({ success: true, data: newData }), { headers: { "Content-Type": "application/json" } });
+    if (request.method === "POST") {
+      const body = await request.json();
+      const isValid = await verifyPassword(body.password, env.ADMIN_PASSWORD_HASH);
+      if (!isValid) return new Response("Unauthorized", { status: 401 });
+
+      if (url.pathname === "/run-check") {
+        await performCheck(env);
+        return new Response(JSON.stringify({ success: true }));
+      }
+
+      if (url.pathname === "/update-sites") {
+        await env.STATUS_KV.put("monitored_sites", JSON.stringify(body.sites));
+        return new Response(JSON.stringify({ success: true }));
+      }
     }
 
     return new Response(htmlContent, { headers: { "Content-Type": "text/html; charset=utf-8" } });
