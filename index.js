@@ -5,7 +5,8 @@ const URLS_TO_CHECK = [
   { id: "github", name: "GitHub", url: "https://github.com" },
   { id: "facebook", name: "Facebook", url: "https://facebook.com" },
   { id: "hibas-oldal", name: "Teszt Hiba", url: "https://ez-biztosan-nem-letezik.hu" },
-  { id: "dezso.hu", name: "dezso.hu", url: "https://www.dezso.hu" }
+  { id: "dezso.hu", name: "dezso.hu", url: "https://www.dezso.hu" },
+  { id: "dezsocloud", name: "DezsoCloud", url: "https://cloud.dezso.hu" }
 ];
 
 const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
