@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="hu">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,25 +8,75 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        :root { --bg: #0a0c10; --card: #161b22; --border: #30363d; --success: #238636; --danger: #da3633; }
-        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: #c9d1d9; }
-        .monitor-card { background: var(--card); border: 1px solid var(--border); transition: transform 0.2s; }
-        .monitor-card:hover { border-color: #8b949e; }
-        .status-bar { display: flex; gap: 4px; height: 40px; }
-        .bar-segment { flex: 1; border-radius: 4px; transition: all 0.2s; position: relative; }
-        .bar-segment:hover { filter: brightness(1.5); cursor: pointer; transform: translateY(-2px); }
-        
+
+        :root {
+            --bg: #0a0c10;
+            --card: #161b22;
+            --border: #30363d;
+            --success: #238636;
+            --danger: #da3633;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: #c9d1d9;
+        }
+
+        .monitor-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            transition: transform 0.2s;
+        }
+
+        .monitor-card:hover {
+            border-color: #8b949e;
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 4px;
+            height: 40px;
+        }
+
+        .bar-segment {
+            flex: 1;
+            border-radius: 4px;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .bar-segment:hover {
+            filter: brightness(1.5);
+            cursor: pointer;
+            transform: translateY(-2px);
+        }
+
         /* Tooltip */
         .bar-segment[title]:hover::after {
             content: attr(title);
-            position: absolute; bottom: 125%; left: 50%; transform: translateX(-50%);
-            background: #1f2937; color: white; padding: 8px 12px; border-radius: 8px;
-            font-size: 12px; white-space: nowrap; z-index: 100; border: 1px solid #374151;
-            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1f2937;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 100;
+            border: 1px solid #374151;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
         }
-        .active-link { background: #1f2937; border-left: 4px solid #2f81f7; }
+
+        .active-link {
+            background: #1f2937;
+            border-left: 4px solid #2f81f7;
+        }
     </style>
 </head>
+
 <body class="min-h-screen flex flex-col md:flex-row">
     <aside class="w-full md:w-72 border-r border-[#30363d] bg-[#0d1117] flex flex-col">
         <div class="p-6 border-b border-[#30363d] flex items-center gap-3">
@@ -65,7 +116,7 @@
         function render() {
             const list = document.getElementById('monitor-list');
             list.innerHTML = '';
-            
+
             Object.keys(rawData).forEach(id => {
                 const m = rawData[id];
                 const isUp = m.lastStatus?.ok;
@@ -84,12 +135,12 @@
 
             const logs = m.detailedLogs || [];
             const uptime = calculateUptime(m);
-            
+
             // 30 darabos Status Bar generálás
             const totalBars = 30;
             const displayLogs = logs.slice(-totalBars);
             let barHtml = '';
-            
+
             for (let i = 0; i < totalBars; i++) {
                 const logIdx = i - (totalBars - displayLogs.length);
                 if (logIdx >= 0) {
@@ -139,8 +190,8 @@
 
                 <div class="space-y-3">
                     <h3 class="text-sm font-semibold text-white ml-1">Események</h3>
-                    ${m.incidents && m.incidents.length > 0 ? 
-                        m.incidents.slice(-5).reverse().map(inc => `
+                    ${m.incidents && m.incidents.length > 0 ?
+                    m.incidents.slice(-5).reverse().map(inc => `
                             <div class="monitor-card p-4 rounded-lg flex justify-between items-center">
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 rounded bg-red-500/10 flex items-center justify-center text-red-500">
@@ -152,11 +203,11 @@
                                     </div>
                                 </div>
                                 <div class="text-xs font-medium ${inc.end ? 'text-green-500' : 'text-red-500'}">
-                                    ${inc.end ? `Tartam: ${Math.round((inc.end - inc.start)/60000)} perc` : 'Jelenleg is tart'}
+                                    ${inc.end ? `Tartam: ${Math.round((inc.end - inc.start) / 60000)} perc` : 'Jelenleg is tart'}
                                 </div>
                             </div>
                         `).join('') : '<div class="text-center p-8 text-slate-600 border border-dashed border-[#30363d] rounded-xl">Nincs rögzített hiba.</div>'
-                    }
+                }
                 </div>
             `;
         }
@@ -165,4 +216,5 @@
         setInterval(refresh, 20000);
     </script>
 </body>
+
 </html>
