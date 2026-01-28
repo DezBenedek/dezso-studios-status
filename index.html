@@ -3,48 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StatusPulse Pro</title>
+    <title>StatusPulse | Dezső Studios</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
-        :root { --bg: #0b1120; --card: #1e293b; --accent: #3b82f6; --success: #10b981; --danger: #f43f5e; --empty: #334155; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg); color: #f1f5f9; overflow-x: hidden; }
-        .sidebar { background-color: #0f172a; border-right: 1px solid rgba(255,255,255,0.05); }
-        .heartbeat-bar { display: flex; gap: 3px; height: 35px; align-items: flex-end; }
-        .heartbeat-piece { flex: 1; border-radius: 3px; min-width: 8px; transition: all 0.2s; position: relative; }
-        .heartbeat-piece:hover { transform: scaleY(1.2); filter: brightness(1.2); cursor: pointer; }
-        .active-monitor { background: rgba(59, 130, 246, 0.1); border-left: 3px solid var(--accent); }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        :root { --bg: #0a0c10; --card: #161b22; --border: #30363d; --success: #238636; --danger: #da3633; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: #c9d1d9; }
+        .monitor-card { background: var(--card); border: 1px solid var(--border); transition: transform 0.2s; }
+        .monitor-card:hover { border-color: #8b949e; }
+        .status-bar { display: flex; gap: 4px; height: 40px; }
+        .bar-segment { flex: 1; border-radius: 4px; transition: all 0.2s; position: relative; }
+        .bar-segment:hover { filter: brightness(1.5); cursor: pointer; transform: translateY(-2px); }
         
-        /* Tooltip stílus */
-        .heartbeat-piece[title]:hover::after {
+        /* Tooltip */
+        .bar-segment[title]:hover::after {
             content: attr(title);
-            position: absolute;
-            bottom: 120%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #0f172a;
-            color: white;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 11px;
-            white-space: nowrap;
-            z-index: 50;
-            border: 1px solid rgba(255,255,255,0.1);
+            position: absolute; bottom: 125%; left: 50%; transform: translateX(-50%);
+            background: #1f2937; color: white; padding: 8px 12px; border-radius: 8px;
+            font-size: 12px; white-space: nowrap; z-index: 100; border: 1px solid #374151;
             box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
         }
+        .active-link { background: #1f2937; border-left: 4px solid #2f81f7; }
     </style>
 </head>
-<body class="h-screen flex flex-col md:flex-row">
-    <aside class="sidebar w-full md:w-80 h-full flex flex-col hidden md:flex">
-        <div class="p-6 border-b border-white/5 flex items-center gap-2 text-indigo-400 font-bold text-xl">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-            StatusPulse
+<body class="min-h-screen flex flex-col md:flex-row">
+    <aside class="w-full md:w-72 border-r border-[#30363d] bg-[#0d1117] flex flex-col">
+        <div class="p-6 border-b border-[#30363d] flex items-center gap-3">
+            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white">S</div>
+            <span class="font-bold text-white tracking-tight">StatusPulse</span>
         </div>
-        <div id="monitor-list" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
+        <div id="monitor-list" class="flex-1 overflow-y-auto p-3 space-y-1"></div>
     </aside>
 
-    <main id="detail-view" class="flex-1 overflow-y-auto p-4 md:p-10">
-        <div class="flex items-center justify-center h-full text-slate-500 italic">Adatok betöltése...</div>
+    <main class="flex-1 p-6 md:p-12 overflow-y-auto">
+        <div id="detail-view" class="max-w-5xl mx-auto">
+            <div class="flex items-center justify-center h-64 text-slate-500">Válassz egy monitort...</div>
+        </div>
     </main>
 
     <script>
@@ -55,17 +49,17 @@
             try {
                 const res = await fetch('?api=true');
                 rawData = await res.json();
-                const ids = Object.keys(rawData);
-                if (!activeId && ids.length > 0) activeId = ids[0];
+                if (!activeId && Object.keys(rawData).length > 0) activeId = Object.keys(rawData)[0];
                 render();
-            } catch (e) { console.error("API hiba", e); }
+            } catch (e) { console.error("API error", e); }
         }
 
+        // Javított Uptime számolás: Ha bármilyen adat van, abból számol
         function calculateUptime(monitor) {
             const logs = monitor.detailedLogs || [];
             if (logs.length === 0) return "100.0";
-            const up = logs.filter(l => l.ok).length;
-            return ((up / logs.length) * 100).toFixed(1);
+            const upCount = logs.filter(l => l.ok === true || l.ok === "true").length;
+            return ((upCount / logs.length) * 100).toFixed(2);
         }
 
         function render() {
@@ -74,13 +68,13 @@
             
             Object.keys(rawData).forEach(id => {
                 const m = rawData[id];
-                const isOnline = m.lastStatus?.ok;
+                const isUp = m.lastStatus?.ok;
                 const div = document.createElement('div');
-                div.className = `flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all ${activeId === id ? 'active-monitor' : 'hover:bg-white/5'}`;
+                div.className = `p-3 rounded-lg cursor-pointer flex items-center gap-3 transition-colors ${activeId === id ? 'active-link text-white' : 'hover:bg-[#161b22] text-[#8b949e]'}`;
                 div.onclick = () => { activeId = id; render(); };
                 div.innerHTML = `
-                    <div class="h-2.5 w-2.5 rounded-full ${isOnline ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]'}"></div>
-                    <div class="flex-1 truncate text-sm font-semibold ${activeId === id ? 'text-white' : 'text-slate-400'}">${m.name}</div>
+                    <div class="w-2 h-2 rounded-full ${isUp ? 'bg-[#238636]' : 'bg-[#da3633]'}"></div>
+                    <span class="text-sm font-medium">${m.name}</span>
                 `;
                 list.appendChild(div);
             });
@@ -88,58 +82,81 @@
             const m = rawData[activeId];
             if (!m) return;
 
-            // Fix 30 blokk generálása
-            const totalBlocks = 30;
-            const recentLogs = m.detailedLogs.slice(-totalBlocks);
-            let heartbeatHtml = '';
+            const logs = m.detailedLogs || [];
+            const uptime = calculateUptime(m);
             
-            for (let i = 0; i < totalBlocks; i++) {
-                const logIndex = i - (totalBlocks - recentLogs.length);
-                if (logIndex >= 0) {
-                    const log = recentLogs[logIndex];
-                    const timeStr = new Date(log.time).toLocaleTimeString('hu-HU');
-                    const statusText = log.ok ? 'Online' : `Hiba: ${log.status}`;
-                    heartbeatHtml += `<div class="heartbeat-piece ${log.ok ? 'bg-emerald-500' : 'bg-rose-500'} h-full" title="${timeStr} - ${statusText} (${log.responseTime}ms)"></div>`;
+            // 30 darabos Status Bar generálás
+            const totalBars = 30;
+            const displayLogs = logs.slice(-totalBars);
+            let barHtml = '';
+            
+            for (let i = 0; i < totalBars; i++) {
+                const logIdx = i - (totalBars - displayLogs.length);
+                if (logIdx >= 0) {
+                    const log = displayLogs[logIdx];
+                    const time = new Date(log.time).toLocaleTimeString('hu-HU');
+                    const color = log.ok ? 'bg-[#238636]' : 'bg-[#da3633]';
+                    barHtml += `<div class="bar-segment ${color}" title="${time} | ${log.responseTime}ms | Status: ${log.status}"></div>`;
                 } else {
-                    heartbeatHtml += `<div class="heartbeat-piece bg-slate-700 h-1/2" title="Nincs adat"></div>`;
+                    barHtml += `<div class="bar-segment bg-[#21262d]"></div>`;
                 }
             }
 
             document.getElementById('detail-view').innerHTML = `
-                <div class="max-w-4xl mx-auto space-y-8 animate-in fade-in">
-                    <div class="bg-slate-800/40 border border-white/5 rounded-[2rem] p-8 flex justify-between items-center">
-                        <div>
-                            <h2 class="text-4xl font-black text-white mb-2">${m.name}</h2>
-                            <p class="text-indigo-400 font-medium opacity-80">${m.url}</p>
-                        </div>
-                        <div class="text-right">
-                            <div class="text-[10px] uppercase font-bold text-slate-500 mb-1">Jelenlegi állapot</div>
-                            <div class="text-3xl font-black ${m.lastStatus?.ok ? 'text-emerald-500' : 'text-rose-500'}">${m.lastStatus?.ok ? 'ONLINE' : 'OFFLINE'}</div>
-                        </div>
+                <div class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h1 class="text-3xl font-bold text-white mb-1">${m.name}</h1>
+                        <a href="${m.url}" target="_blank" class="text-blue-400 hover:underline text-sm">${m.url}</a>
                     </div>
+                    <div class="px-4 py-2 rounded-full font-bold flex items-center gap-2 ${m.lastStatus?.ok ? 'bg-[#238636]/10 text-[#3fb950]' : 'bg-[#da3633]/10 text-[#f85149]'}">
+                        <div class="w-2 h-2 rounded-full animate-pulse ${m.lastStatus?.ok ? 'bg-[#3fb950]' : 'bg-[#f85149]'}"></div>
+                        ${m.lastStatus?.ok ? 'ÜZEMEL' : 'LEÁLLT'}
+                    </div>
+                </div>
 
-                    <div class="bg-slate-800/40 border border-white/5 rounded-[1.5rem] p-6">
-                        <div class="flex justify-between items-center mb-4 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                            <span>Utolsó 30 mérés</span>
-                            <span>${calculateUptime(m)}% Uptime</span>
-                        </div>
-                        <div class="heartbeat-bar">${heartbeatHtml}</div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="monitor-card p-5 rounded-xl">
+                        <div class="text-xs text-[#8b949e] uppercase font-bold mb-1">Uptime (30 nap)</div>
+                        <div class="text-2xl font-semibold text-white">${uptime}%</div>
                     </div>
+                    <div class="monitor-card p-5 rounded-xl">
+                        <div class="text-xs text-[#8b949e] uppercase font-bold mb-1">Válaszidő</div>
+                        <div class="text-2xl font-semibold text-white">${m.lastStatus?.responseTime || 0} ms</div>
+                    </div>
+                    <div class="monitor-card p-5 rounded-xl">
+                        <div class="text-xs text-[#8b949e] uppercase font-bold mb-1">Utolsó mérés</div>
+                        <div class="text-2xl font-semibold text-white">${m.lastStatus ? new Date(m.lastStatus.time).toLocaleTimeString('hu-HU') : '-'}</div>
+                    </div>
+                </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div class="bg-slate-800/40 border border-white/5 rounded-3xl p-6">
-                            <div class="text-slate-500 text-[10px] font-bold uppercase mb-2">Válaszidő</div>
-                            <div class="text-2xl font-bold text-white">${m.lastStatus?.responseTime || 0} ms</div>
-                        </div>
-                        <div class="bg-slate-800/40 border border-white/5 rounded-3xl p-6">
-                            <div class="text-slate-500 text-[10px] font-bold uppercase mb-2">Havi Uptime</div>
-                            <div class="text-2xl font-bold text-emerald-500">${calculateUptime(m)}%</div>
-                        </div>
-                        <div class="bg-slate-800/40 border border-white/5 rounded-3xl p-6">
-                            <div class="text-slate-500 text-[10px] font-bold uppercase mb-2">Frissítve</div>
-                            <div class="text-lg font-bold text-white">${m.lastStatus ? new Date(m.lastStatus.time).toLocaleTimeString('hu-HU') : '-'}</div>
-                        </div>
+                <div class="monitor-card p-6 rounded-xl mb-6">
+                    <div class="flex justify-between mb-4">
+                        <h3 class="text-sm font-semibold text-white">Mérések (utolsó 30)</h3>
+                        <span class="text-xs text-[#8b949e]">Balról jobbra: régitől az újszerűig</span>
                     </div>
+                    <div class="status-bar">${barHtml}</div>
+                </div>
+
+                <div class="space-y-3">
+                    <h3 class="text-sm font-semibold text-white ml-1">Események</h3>
+                    ${m.incidents && m.incidents.length > 0 ? 
+                        m.incidents.slice(-5).reverse().map(inc => `
+                            <div class="monitor-card p-4 rounded-lg flex justify-between items-center">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded bg-red-500/10 flex items-center justify-center text-red-500">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-bold text-white">Down (Status: ${inc.code})</div>
+                                        <div class="text-xs text-[#8b949e]">${new Date(inc.start).toLocaleString('hu-HU')}</div>
+                                    </div>
+                                </div>
+                                <div class="text-xs font-medium ${inc.end ? 'text-green-500' : 'text-red-500'}">
+                                    ${inc.end ? `Tartam: ${Math.round((inc.end - inc.start)/60000)} perc` : 'Jelenleg is tart'}
+                                </div>
+                            </div>
+                        `).join('') : '<div class="text-center p-8 text-slate-600 border border-dashed border-[#30363d] rounded-xl">Nincs rögzített hiba.</div>'
+                    }
                 </div>
             `;
         }
