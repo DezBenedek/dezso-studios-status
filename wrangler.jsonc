@@ -9,12 +9,19 @@
   "kv_namespaces": [
     {
       "binding": "STATUS_KV",
-      "id": "f185a8af3f4e495083b894441cfd4c09" 
+      "id": "f185a8af3f4e495083b894441cfd4c09"
     }
   ],
   "triggers": {
     "crons": [
       "*/3 * * * *"
     ]
-  }
+  },
+  "rules": [
+    {
+      "type": "Text",
+      "globs": ["**/*.html"],
+      "fallthrough": true
+    }
+  ]
 }
